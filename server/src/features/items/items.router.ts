@@ -1,7 +1,7 @@
 import express from "express";
 import { getItemDetail, getItems } from "./items.service";
 
-export const itemsRouter = express.Router();
+export const itemsRouter = express.Router(); //export pq vai ser importado para o routes.ts
 //fazer funcao para listagem de itens retorna como json juntamente com suas imagens
 // CTRL + Corrige a importação
 itemsRouter.get("/", async (req, res) => { //quando alguem acessar -> blablabla/api/items/ -> o comando abaixo vai ser executado
