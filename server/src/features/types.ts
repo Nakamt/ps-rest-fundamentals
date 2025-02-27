@@ -2,12 +2,13 @@ import { z } from "zod";
 
 export const idNumberRequestSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
-});
+}); // esse aqui verifica se há um padrao ID(numerico)
 
 export const idUUIDRequestSchema = z.object({
   params: z.object({ id: z.string().uuid() }),
-});
+})//e esse um padrao UUID
 
+//e esse faz validações de paginas, ele disse q o curso não é focado em ZOD, ent só dei uma passada de olho nesse arquivo msm
 export const pagingRequestSchema = z.object({
   query: z.object({
     take: z.coerce.number().int().positive(),

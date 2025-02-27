@@ -16,13 +16,16 @@ const app = express();
 app.use(express.json());
 
 // register routes
-app.use("/", routes);
-
+app.use("/", routes); //chama o roteador ANTES do middleware
+//As requisições PRIMEIRO vao passar pelas rotas e se corresponder a uma rota dentro de routes ela sera processada imediatamente
 
 // register middleware
-app.use(express.static("public"));
-app.use(errorHandler);
+app.use(express.static("public")); //vai servir arquivos estaticos
+app.use(errorHandler); // e os dois aqui sao middlewares de erro, caso as rotas capturem erros
 app.use(notFoundHandler);
+//mas ai chega a pergunta: Se as rotas ja sao chamadas antes e vao ser enviadas em seus devidos lugares, esses middlewares de erro sao necessarios?
+// Fui pesquisar mais afundo e é exatamente esse o proposito, de deixar eles depois para notificar algo indesejado(erros)
+//essa ideia de middleware ainda ta muito abstrata, vou seguir o video, caso nao entenda muito bem, vou manter esse comentario assim
 
 // start server
 app.listen(PORT, () =>
