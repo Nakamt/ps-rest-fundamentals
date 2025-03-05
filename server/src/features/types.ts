@@ -21,25 +21,26 @@ export type Item = {
   name: string;
   imageUrl?: string;
 };
-
+//usamos esses dois para enviar dados do servidor ao client
 export type ItemDetail = Item & {
   description: string | null;
 };
 
-export const itemDTO = z.object({
+//DTO
+export const itemDTO = z.object({ //item DTO = define quais campos esperamos do client, um nome e uma descrição
   name: z.string(),
   description: z.nullable(z.string()),
 });
 
 export type ItemDTO = z.infer<typeof itemDTO>;
 
-export const itemPOSTRequestSchema = z.object({
+export const itemPOSTRequestSchema = z.object({ //aq ele fala ao ZOD que precisamos da definiÇão do itemDTO no corpo da requisição
   body: itemDTO,
 });
 
 export const itemPUTRequestSchema = idNumberRequestSchema.merge(
   itemPOSTRequestSchema
-);
+); //esta mesclando o get dos id's junto com os POST itens
 
 export const queryRequestSchema = z.object({
   params: z.object({ query: z.string() }),
@@ -86,9 +87,9 @@ export type OrderItem = {
   quantity: number;
 };
 
-export const orderItemDTO = z.object({
-  itemId: z.number().int().positive(),
-  quantity: z.number().int().positive(),
+export const orderItemDTO = z.object({ 
+  itemId: z.number().int().positive(), 
+  quantity: z.number().int().positive(), 
 });
 
 export const orderDTO = z.object({
@@ -106,9 +107,9 @@ export const orderPUTRequestSchema = idUUIDRequestSchema.merge(
   })
 );
 
-export const orderItemsDTORequestSchema = z.object({
-  params: z.object({ id: z.string().uuid() }),
-  body: z.array(orderItemDTO),
+export const orderItemsDTORequestSchema = z.object({ //esse e um pouco diff
+  params: z.object({ id: z.string().uuid() }), //primeiro pega o param de ID
+  body: z.array(orderItemDTO), //e depois a estrutura da order
 });
 
 export type OrderDTO = z.infer<typeof orderDTO>;

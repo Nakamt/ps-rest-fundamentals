@@ -1,8 +1,9 @@
 import express from "express";
-import { getCustomerDetail, getCustomers, searchCustomers } from "./customers.service";
+import { deleteCustomer, getCustomerDetail, getCustomers, searchCustomers, upsertCustomer } from "./customers.service";
 import { getOrdersForCustomer } from "../orders/orders.service";
 import { validate } from "../../middleware/validation.middleware";
-import { idUUIDRequestSchema } from "../types";
+import { customerPOSTRequestSchema, customerPUTRequestSchema, idUUIDRequestSchema, queryRequestSchema } from "../types";
+import { create } from "xmlbuilder2";
 
 
 export const customersRouter = express.Router();
@@ -10,7 +11,17 @@ export const customersRouter = express.Router();
 // CTRL + Corrige a importação
 customersRouter.get("/", async (req, res) => { //quando alguem acessar /api/customers/
   const customers = await getCustomers();
-  res.json(customers);
+  
+  if(req.headers["accept"] == "application/xml"){
+    const root = create().ele("customers");
+    customers.forEach((i)=>{
+      root.ele("customer", i);
+    });
+    res.status(200).send(root.end({prettyPrint: true}));
+  }else{
+    res.json(customers);
+  
+  }
 });
 //agora fazer os detalhes dos clientes
 customersRouter.get("/:id", validate(idUUIDRequestSchema), async (req, res)=>{ //: significa que agr vm mexer URL
@@ -18,10 +29,22 @@ customersRouter.get("/:id", validate(idUUIDRequestSchema), async (req, res)=>{ /
   // const customer = await getCustomerDetail(id);
   const data = idUUIDRequestSchema.parse(req);
   const customer = await getCustomerDetail(data.params.id); //Consegui fzr os exercicios, mas ainda acho q a pior aula foi essa de middleware
-  if(customer != null){ 
-    res.json(customer);
+  if(customer != null){
+    
+    if(req.headers["accept"] == "application/xml"){
+      res.status(200).send(create().ele("customer", customer).end());
+    } else{
+      res.json(customer);
+    }
+
   }else{
-    res.status(404).json({message: "Cliente nao encontrado!"});
+    
+    if(req.headers["accept"] == "application/xml"){
+      res.status(200).send(create().ele("error", {message: "Cliente nao encontrado!"}).end());
+    } else{
+      res.status(404).json({message: "Cliente nao encontrado!"});
+    }
+
   }
 });
 //Essa parte aq foi o famoso ctrl C + Ctrl V e comentei as partes so para fixar na cabeça mesmo
@@ -34,14 +57,83 @@ customersRouter.get("/:id/orders", async(req, res)=>{ //cria-se função ger par
 
   const data = idUUIDRequestSchema.parse(req);
   const orders = await getOrdersForCustomer(data.params.id);
-  res.json(orders);//volta-se em json como de costume
+  if(req.headers["accept"] == "application/xml"){
+    const root = create().ele("orders");
+    orders.forEach((i)=>{
+      root.ele("order", i);
+    });
+    res.status(200).send(root.end({prettyPrint: true}));
+  }else{
+    res.json(orders);//volta-se em json como de costume
+  }
 });
 
 //agora faremos o pesquisa
-customersRouter.get("/search/:query", async(req, res)=>{ //aq errei tbm, qm deve ser prefixado de : e o query e nao o search
+customersRouter.get("/search/:query",validate(queryRequestSchema), async(req, res)=>{ //aq errei tbm, qm deve ser prefixado de : e o query e nao o search
   //pois o query vai ser o parametro dinamico que vai detalhar a pesquisa do nosso cliente
-  const query = req.params.query;
-  const customers = await searchCustomers(query); //aq eu errei, eu coloquei search em vez de customers como variavel
-  //faz mais sentido customers pois estamos pegando a lista de clientes
-  res.json(customers);
+  // const query = req.params.query;
+  // const customers = await searchCustomers(query); //aq eu errei, eu coloquei search em vez de customers como variavel
+  // //faz mais sentido customers pois estamos pegando a lista de clientes
+  const data = queryRequestSchema.parse(req);
+  const customers = await searchCustomers(data.params.query);
+  if(req.headers["accept"] == "application/xml"){
+    const root = create().ele("customers");
+    customers.forEach((i)=>{
+      root.ele("customer", i);
+    });
+    res.status(200).send(root.end({prettyPrint: true}));
+  }else{
+    res.json(customers);
+  }
 });
+
+customersRouter.post("/", validate(customerPOSTRequestSchema), async(req, res)=>{
+  const data = customerPOSTRequestSchema.parse(req);
+  const customer = await upsertCustomer(data.body); //segue tudo a mesma ideia anterior
+  if(customer != null){
+
+    if(req.headers["accept"] == "application/xml"){
+      res.status(201).send(create().ele("customer", customer).end());
+    } else{
+      res.status(201).json(customer);
+    }
+
+  }else{
+    if(req.headers["accept"] == "application/xml"){
+      res.status(500).send(create().ele("error", {message: "Falha na criacao de cliente"}).end());
+    } else{
+      res.status(500).json({message: "Falha na criacao de cliente!"});
+    }
+  }
+});
+
+customersRouter.delete("/:id", validate(idUUIDRequestSchema), async(req, res)=>{
+  const data = idUUIDRequestSchema.parse(req);
+  const customer = await deleteCustomer(data.params.id);
+  if(customer != null){
+    res.json(customer);
+  }else{
+    res.status(404).json({message: "Cliente nao encontrado!"});
+  }//exercicio feito!
+});
+
+customersRouter.put("/", validate(customerPUTRequestSchema), async(req, res) =>{
+  const data = customerPUTRequestSchema.parse(req);
+  const customer = await upsertCustomer(data.body, data.params.id);
+  if(customer != null){
+
+    if (req.headers["accept"] == "application/xml"){ 
+      res.status(200).send(create().ele("customer", customer).end()); 
+    }else{
+      res.json(customer);
+    }
+
+  }else{
+    
+    if (req.headers["accept"] == "application/xml"){ 
+      res.status(404).send(create().ele("error", {message: "Cliente nao encontrado"}).end()); 
+    }else{
+      res.status(404).json({message: "Cliente nao encontrado"});
+    }
+  }
+}); //exercicio feito, mas ainda continuo sem entender o uso da / solitaria ali

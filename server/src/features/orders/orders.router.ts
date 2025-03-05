@@ -1,7 +1,8 @@
 import express from "express";
-import { getOrderDetail, getOrders } from "./orders.service";
-import { idUUIDRequestSchema, pagingRequestSchema } from "../types";
+import { addOrderItems, deleteOrder, deleteOrderItem, getOrderDetail, getOrders, upsertOrder } from "./orders.service";
+import { idItemIdUUIDRequestSchema, idUUIDRequestSchema, orderItemsDTORequestSchema, orderPOSTRequestSchema, orderPUTRequestSchema, pagingRequestSchema } from "../types";
 import { validate } from "../../middleware/validation.middleware";
+import { create } from "xmlbuilder2";
 
 export const ordersRouter = express.Router();
 //o codigo segue o mesmo padrao do itens, so q com UUID, e algumas alterações
@@ -54,4 +55,84 @@ ordersRouter.get("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
         res.status(404).json({message: "Pedido nao encontrado"});
     } //ERREI, esqueci o krai do if else, achei q n precisava, visto que o ZOD ja ta fazendo TUDO MESMO!
     //maaas, pelo visto precisa...
+});
+
+ordersRouter.post("/", validate(orderPOSTRequestSchema), async(req,res)=>{
+    const data = orderPOSTRequestSchema.parse(req);
+    const order = await upsertOrder(data.body);
+    if(order != null){
+        if(req.headers["accept"] == "application/xml"){
+            res.status(201).send(create().ele("order", order).end());
+          }else{
+            res.status(201).json(order);
+          }
+    }else{
+        if(req.headers["accept"] == "application/xml"){
+            res.status(500).send(create().ele("error", {message: "Falha na criacao do pedido"}).end());
+          }else{
+            res.status(500).json({message: "Falha na criacao do pedido"});
+          }
+    } 
+});//msm ideia dos outros tbm
+
+//POST para subcoleções, mesma ideia do GET
+//Mesma ideia de um POST regular tbm, muda nada so aumenta uma coisinha ou outra
+ordersRouter.post("/:id/items", validate(orderItemsDTORequestSchema), async(req,res)=>{
+    const data = orderItemsDTORequestSchema.parse(req);
+    const order = await addOrderItems(data.params.id, data.body);
+    if(order != null){
+        if(req.headers["accept"] == "application/xml"){
+            res.status(201).send(create().ele("order", order).end());
+          }else{
+            res.status(201).json(order);
+          }
+    }else{
+        if(req.headers["accept"] == "application/xml"){
+            res.status(500).send(create().ele("error", {message: "Falha na adicao!"}).end());
+          }else{
+            res.status(500).json({message: "Falha na adicao!"});
+          }
+    }
+});
+
+ordersRouter.delete("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
+    const data = idUUIDRequestSchema.parse(req);
+    const order = await deleteOrder(data.params.id);
+    if(order != null){
+        res.json(order);
+    }else{
+        res.status(404).json({message: "Pedido nao encontrado"});
+    } //exercicio feito! so n sei testar em orders, mas acho q ta certinho!
+});
+//DELETE para subcolecoes e mais chato, pois vai precisar de dois ID's(order + item)
+ordersRouter.delete("/:id/items/:itemId", validate(idItemIdUUIDRequestSchema), async(req, res)=>{
+    const data = idItemIdUUIDRequestSchema.parse(req);
+    const order = await deleteOrderItem(data.params.id, data.params.itemId);
+    if(order != null){
+        if(req.headers["accept"] == "application/xml"){
+            res.status(201).send(create().ele("order", order).end());
+          }else{
+            res.status(201).json(order);
+          }
+    }else{
+        if(req.headers["accept"] == "application/xml"){
+            res.status(404).send(create().ele("error", {message: "Pedido ou item nao encontrado!"}).end());
+          }else{
+            res.status(404).json({message: "Pedido ou item nao encontrado!"});
+          }
+    }
+});
+
+//aqui vai ser diferente, ele implementou do jeito DELE, e n de um jeito casual
+// pois aqui em orders precisamos atualizar uma UNICA entidade (usaria path, mas n se usa nesse curso)
+ordersRouter.put("/:id", validate(orderPUTRequestSchema), async(req, res)=>{
+    const data = orderPUTRequestSchema.parse(req);
+    const orderData = await {customerId: "", ...data.body}; //esses tres pontos é: pega todas as propriedades de data.body e espalhe dentro de orderData
+    //ou seja, ela so garante que todas as prorpiedades do cody sejam copiadas corretamente
+    const order = await upsertOrder(orderData, data.params.id);
+    if(order != null){
+        res.json(order);
+    }else{
+        res.status(404).json({message: "Pedido nao encontrado!"});
+    }
 });
