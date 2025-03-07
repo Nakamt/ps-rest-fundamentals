@@ -13,3 +13,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </React.StrictMode>,
 );
+
+console.log("API Base URL:", import.meta.env.VITE_API_BASE_URL);
+//coloquei pra ver se a URL ta certa no .env, ta dando um erro aqui mesmo dps de colocar o CORS, e n sei oq fazer, to utilizando do chat + github

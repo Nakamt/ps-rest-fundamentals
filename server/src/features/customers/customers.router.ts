@@ -4,12 +4,14 @@ import { getOrdersForCustomer } from "../orders/orders.service";
 import { validate } from "../../middleware/validation.middleware";
 import { customerPOSTRequestSchema, customerPUTRequestSchema, idUUIDRequestSchema, queryRequestSchema } from "../types";
 import { create } from "xmlbuilder2";
+import { checkRequiredScope } from "../../middleware/auth0middleware";
+import { CustomersPermissions, SecurityPermissions } from "../../config/permissions";
 
 
 export const customersRouter = express.Router();
 //lista clientes + nao precisa de imagens 
 // CTRL + Corrige a importação
-customersRouter.get("/", async (req, res) => { //quando alguem acessar /api/customers/
+customersRouter.get("/", checkRequiredScope(CustomersPermissions.Read),async (req, res) => { //quando alguem acessar /api/customers/
   const customers = await getCustomers();
   
   if(req.headers["accept"] == "application/xml"){
@@ -24,7 +26,7 @@ customersRouter.get("/", async (req, res) => { //quando alguem acessar /api/cust
   }
 });
 //agora fazer os detalhes dos clientes
-customersRouter.get("/:id", validate(idUUIDRequestSchema), async (req, res)=>{ //: significa que agr vm mexer URL
+customersRouter.get("/:id", checkRequiredScope(CustomersPermissions.Read_Single),validate(idUUIDRequestSchema), async (req, res)=>{ //: significa que agr vm mexer URL
   // const id = req.params.id; //nao necessita do parseInt
   // const customer = await getCustomerDetail(id);
   const data = idUUIDRequestSchema.parse(req);
@@ -40,7 +42,7 @@ customersRouter.get("/:id", validate(idUUIDRequestSchema), async (req, res)=>{ /
   }else{
     
     if(req.headers["accept"] == "application/xml"){
-      res.status(200).send(create().ele("error", {message: "Cliente nao encontrado!"}).end());
+      res.status(404).send(create().ele("error", {message: "Cliente nao encontrado!"}).end());
     } else{
       res.status(404).json({message: "Cliente nao encontrado!"});
     }
@@ -49,7 +51,7 @@ customersRouter.get("/:id", validate(idUUIDRequestSchema), async (req, res)=>{ /
 });
 //Essa parte aq foi o famoso ctrl C + Ctrl V e comentei as partes so para fixar na cabeça mesmo
 
-customersRouter.get("/:id/orders", async(req, res)=>{ //cria-se função ger para obter os pedidos dos clientes
+customersRouter.get("/:id/orders", checkRequiredScope(CustomersPermissions.Read_Single), validate(idUUIDRequestSchema),async(req, res)=>{ //cria-se função ger para obter os pedidos dos clientes
   // const id = req.params.id; //recuperamemos o Id dnv com o msm comandinho
   // const orders = await getOrdersForCustomer(id); //esse aq eu consegui fazer, mas n entendi muito a logica
   // //ele qria fzr com q a constante orders passasse por essa funçãozinha para obter o pedido de cada cliente, mas e se nao houver esse id?
@@ -69,7 +71,7 @@ customersRouter.get("/:id/orders", async(req, res)=>{ //cria-se função ger par
 });
 
 //agora faremos o pesquisa
-customersRouter.get("/search/:query",validate(queryRequestSchema), async(req, res)=>{ //aq errei tbm, qm deve ser prefixado de : e o query e nao o search
+customersRouter.get("/search/:query",checkRequiredScope(CustomersPermissions.Read) ,validate(queryRequestSchema), async(req, res)=>{ //aq errei tbm, qm deve ser prefixado de : e o query e nao o search
   //pois o query vai ser o parametro dinamico que vai detalhar a pesquisa do nosso cliente
   // const query = req.params.query;
   // const customers = await searchCustomers(query); //aq eu errei, eu coloquei search em vez de customers como variavel
@@ -87,7 +89,7 @@ customersRouter.get("/search/:query",validate(queryRequestSchema), async(req, re
   }
 });
 
-customersRouter.post("/", validate(customerPOSTRequestSchema), async(req, res)=>{
+customersRouter.post("/", checkRequiredScope(CustomersPermissions.Create),validate(customerPOSTRequestSchema), async(req, res)=>{
   const data = customerPOSTRequestSchema.parse(req);
   const customer = await upsertCustomer(data.body); //segue tudo a mesma ideia anterior
   if(customer != null){
@@ -107,7 +109,7 @@ customersRouter.post("/", validate(customerPOSTRequestSchema), async(req, res)=>
   }
 });
 
-customersRouter.delete("/:id", validate(idUUIDRequestSchema), async(req, res)=>{
+customersRouter.delete("/:id", checkRequiredScope(SecurityPermissions.Deny),validate(idUUIDRequestSchema), async(req, res)=>{
   const data = idUUIDRequestSchema.parse(req);
   const customer = await deleteCustomer(data.params.id);
   if(customer != null){
@@ -117,7 +119,7 @@ customersRouter.delete("/:id", validate(idUUIDRequestSchema), async(req, res)=>{
   }//exercicio feito!
 });
 
-customersRouter.put("/", validate(customerPUTRequestSchema), async(req, res) =>{
+customersRouter.put("/:id", checkRequiredScope(CustomersPermissions.Write),validate(customerPUTRequestSchema), async(req, res) =>{
   const data = customerPUTRequestSchema.parse(req);
   const customer = await upsertCustomer(data.body, data.params.id);
   if(customer != null){

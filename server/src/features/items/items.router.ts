@@ -3,6 +3,8 @@ import { deleteItem, getItemDetail, getItems, upsertItem } from "./items.service
 import { validate } from "../../middleware/validation.middleware";
 import { idNumberRequestSchema, itemPOSTRequestSchema, itemPUTRequestSchema } from "../types";
 import { create } from "xmlbuilder2";
+import { checkRequiredScope, validateAccessToken } from "../../middleware/auth0middleware";
+import { ItemsPermissions, SecurityPermissions } from "../../config/permissions";
 
 export const itemsRouter = express.Router(); //export pq vai ser importado para o routes.ts
 //fazer funcao para listagem de itens retorna como json juntamente com suas imagens
@@ -57,7 +59,7 @@ itemsRouter.get("/:id",validate(idNumberRequestSchema) ,async (req, res)=>{ //':
   }
 }); 
 
-itemsRouter.post("/", validate(itemPOSTRequestSchema), async(req,res)=>{
+itemsRouter.post("/", validateAccessToken, checkRequiredScope(ItemsPermissions.Create) ,validate(itemPOSTRequestSchema), async(req,res)=>{
   const data = itemPOSTRequestSchema.parse(req); //verifica se foi passado adequadamente o corpo estrutura
   const item = await upsertItem(data.body); //insere o novo item
   if(item != null){
@@ -68,7 +70,7 @@ itemsRouter.post("/", validate(itemPOSTRequestSchema), async(req,res)=>{
 });
 
 //agora vamos fazer um Delete, q e semelhante ao GET
-itemsRouter.delete("/:id", validate(idNumberRequestSchema), async(req, res)=>{
+itemsRouter.delete("/:id", validateAccessToken, checkRequiredScope(SecurityPermissions.Deny),validate(idNumberRequestSchema), async(req, res)=>{
   const data = idNumberRequestSchema.parse(req);
   const item = await deleteItem(data.params.id);
   if(item != null){
@@ -79,7 +81,7 @@ itemsRouter.delete("/:id", validate(idNumberRequestSchema), async(req, res)=>{
 });
 
 //put e path e BEM distinto de get e post
-itemsRouter.put("/", validate(itemPUTRequestSchema), async(req, res)=>{
+itemsRouter.put("/:id", validateAccessToken,checkRequiredScope(ItemsPermissions.Write) ,validate(itemPUTRequestSchema), async(req, res)=>{
   const data = itemPUTRequestSchema.parse(req);
   const item = await upsertItem(data.body, data.params.id);
   if(item != null){

@@ -2,16 +2,17 @@ import express from "express"; // fornece funções para criar servidores
 import { itemsRouter } from "./items/items.router";
 import { customersRouter } from "./customers/customers.router";
 import { ordersRouter } from "./orders/orders.router";
+import { validateAccessToken } from "../middleware/auth0middleware";
 
 // register routes
 //vamos agrupa-los (items, customers, orders)
 const apiRouter = express.Router(); // cria o roteador principal para varias rotas
 
 apiRouter.use("/items", itemsRouter); //aq meio que explica que cada API vai ser atendida como tipo blabla/api/items, meio que pavimenta as ruas
+//so items por enquanto q vai ser separado a validação de tokens
+apiRouter.use("/customers", validateAccessToken ,customersRouter); //mesma coisa
 
-apiRouter.use("/customers", customersRouter); //mesma coisa
-
-apiRouter.use("/orders", ordersRouter); //mesma coisa
+apiRouter.use("/orders", validateAccessToken, ordersRouter); //mesma coisa
 
 export const routes = express.Router();
 routes.use("/api", apiRouter); //aq diz que tudo vai estar acessivel com o prefixo api ou seja: blablabla/api/router

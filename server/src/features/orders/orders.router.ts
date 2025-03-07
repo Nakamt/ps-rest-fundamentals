@@ -3,10 +3,12 @@ import { addOrderItems, deleteOrder, deleteOrderItem, getOrderDetail, getOrders,
 import { idItemIdUUIDRequestSchema, idUUIDRequestSchema, orderItemsDTORequestSchema, orderPOSTRequestSchema, orderPUTRequestSchema, pagingRequestSchema } from "../types";
 import { validate } from "../../middleware/validation.middleware";
 import { create } from "xmlbuilder2";
+import { checkRequiredScope } from "../../middleware/auth0middleware";
+import { OrdersPermissions, SecurityPermissions } from "../../config/permissions";
 
 export const ordersRouter = express.Router();
 //o codigo segue o mesmo padrao do itens, so q com UUID, e algumas alterações
-ordersRouter.get("/", validate(pagingRequestSchema), async(req,res)=>{
+ordersRouter.get("/", checkRequiredScope(OrdersPermissions.Read),validate(pagingRequestSchema), async(req,res)=>{
 //     const query = req.query; //Capturar todos os parametros dps do ? na URL e retorna como string
 //     const take = query.take; //Vai pegar o valor de take (string)
 //     const skip = query.skip; //Vai pegar o valor de skip (string)
@@ -38,7 +40,7 @@ ordersRouter.get("/", validate(pagingRequestSchema), async(req,res)=>{
     res.json(orders);
 });
 
-ordersRouter.get("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
+ordersRouter.get("/:id", checkRequiredScope(OrdersPermissions.Read_Single),validate(idUUIDRequestSchema) ,async(req,res)=>{
     // const id = req.params.id;
     // const order = await getOrderDetail(id);
     // if(order != null){
@@ -57,7 +59,7 @@ ordersRouter.get("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
     //maaas, pelo visto precisa...
 });
 
-ordersRouter.post("/", validate(orderPOSTRequestSchema), async(req,res)=>{
+ordersRouter.post("/", checkRequiredScope(OrdersPermissions.Create),validate(orderPOSTRequestSchema), async(req,res)=>{
     const data = orderPOSTRequestSchema.parse(req);
     const order = await upsertOrder(data.body);
     if(order != null){
@@ -77,7 +79,7 @@ ordersRouter.post("/", validate(orderPOSTRequestSchema), async(req,res)=>{
 
 //POST para subcoleções, mesma ideia do GET
 //Mesma ideia de um POST regular tbm, muda nada so aumenta uma coisinha ou outra
-ordersRouter.post("/:id/items", validate(orderItemsDTORequestSchema), async(req,res)=>{
+ordersRouter.post("/:id/items", checkRequiredScope(OrdersPermissions.Create),validate(orderItemsDTORequestSchema), async(req,res)=>{
     const data = orderItemsDTORequestSchema.parse(req);
     const order = await addOrderItems(data.params.id, data.body);
     if(order != null){
@@ -95,7 +97,7 @@ ordersRouter.post("/:id/items", validate(orderItemsDTORequestSchema), async(req,
     }
 });
 
-ordersRouter.delete("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
+ordersRouter.delete("/:id", checkRequiredScope(SecurityPermissions.Deny),validate(idUUIDRequestSchema) ,async(req,res)=>{
     const data = idUUIDRequestSchema.parse(req);
     const order = await deleteOrder(data.params.id);
     if(order != null){
@@ -105,7 +107,7 @@ ordersRouter.delete("/:id",validate(idUUIDRequestSchema) ,async(req,res)=>{
     } //exercicio feito! so n sei testar em orders, mas acho q ta certinho!
 });
 //DELETE para subcolecoes e mais chato, pois vai precisar de dois ID's(order + item)
-ordersRouter.delete("/:id/items/:itemId", validate(idItemIdUUIDRequestSchema), async(req, res)=>{
+ordersRouter.delete("/:id/items/:itemId", checkRequiredScope(OrdersPermissions.Create),validate(idItemIdUUIDRequestSchema), async(req, res)=>{
     const data = idItemIdUUIDRequestSchema.parse(req);
     const order = await deleteOrderItem(data.params.id, data.params.itemId);
     if(order != null){
@@ -125,9 +127,9 @@ ordersRouter.delete("/:id/items/:itemId", validate(idItemIdUUIDRequestSchema), a
 
 //aqui vai ser diferente, ele implementou do jeito DELE, e n de um jeito casual
 // pois aqui em orders precisamos atualizar uma UNICA entidade (usaria path, mas n se usa nesse curso)
-ordersRouter.put("/:id", validate(orderPUTRequestSchema), async(req, res)=>{
+ordersRouter.put("/:id", checkRequiredScope(OrdersPermissions.Write),validate(orderPUTRequestSchema), async(req, res)=>{
     const data = orderPUTRequestSchema.parse(req);
-    const orderData = await {customerId: "", ...data.body}; //esses tres pontos é: pega todas as propriedades de data.body e espalhe dentro de orderData
+    const orderData = {customerId: "", ...data.body}; //esses tres pontos é: pega todas as propriedades de data.body e espalhe dentro de orderData
     //ou seja, ela so garante que todas as prorpiedades do cody sejam copiadas corretamente
     const order = await upsertOrder(orderData, data.params.id);
     if(order != null){
